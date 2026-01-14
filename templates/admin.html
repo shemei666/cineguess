@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineGuess Redaction Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Fallback style if not serving static folder correctly or running standalone -->
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            font-family: 'Outfit', sans-serif;
+            color: #eee;
+            margin: 0;
+        }
+
+        #sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        #movie-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        /* Custom Scrollbar */
+        #movie-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #movie-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        #movie-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        #movie-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .movie-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #ccc;
+            transition: background 0.2s;
+        }
+
+        .movie-item:hover,
+        .movie-item.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .movie-item .year {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        #search-box {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        #editor-area {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: auto;
+        }
+
+        #editor-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .description-text {
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+
+        .word-token {
+            display: inline-block;
+            margin: 2px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .word-token:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .word-token.redacted {
+            background-color: #ff4757;
+            color: white;
+            text-decoration: line-through;
+        }
+
+        #stats-bar {
+            margin-top: 20px;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            background: #2ed573;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: transform 0.1s;
+        }
+
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+
+        .action-btn:hover {
+            background: #26af61;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2ed573;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            font-weight: 500;
+        }
+
+        #toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #toast.error {
+            background: #ff4757;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <h3>Movies</h3>
+        <input type="text" id="search-box" placeholder="Search...">
+        <div id="movie-list">Loading...</div>
+    </div>
+
+    <div id="editor-area">
+        <div id="editor-card" style="display:none;">
+            <h2 id="movie-title">Select a Movie</h2>
+            <div id="word-container" class="description-text"></div>
+
+            <div
+                style="display:flex; justify-content: space-between; width: 100%; align-items: center; margin-top: 20px;">
+                <div id="stats-bar">
+                    Hidden: <span id="hidden-count">0</span> / <span id="total-count">0</span> words
+                </div>
+                <button id="save-btn" class="action-btn">Save Changes</button>
+            </div>
+        </div>
+        <div id="placeholder-msg" style="color: #666; font-size: 1.5rem; margin-top: 100px;">
+            Select a movie from the sidebar to edit redactions.
+        </div>
+    </div>
+
+    <div id="toast">Saved!</div>
+
+    <script>
+        let allMovies = [];
+        let currentMovie = null;
+
+        // DOM Elements
+        const movieListEl = document.getElementById('movie-list');
+        const searchBox = document.getElementById('search-box');
+        const editorCard = document.getElementById('editor-card');
+        const placeholderMsg = document.getElementById('placeholder-msg');
+        const movieTitleEl = document.getElementById('movie-title');
+        const wordContainer = document.getElementById('word-container');
+        const hiddenCountEl = document.getElementById('hidden-count');
+        const totalCountEl = document.getElementById('total-count');
+        const saveBtn = document.getElementById('save-btn');
+        const toast = document.getElementById('toast');
+
+        // Init
+        fetchMovies();
+
+        searchBox.addEventListener('input', (e) => renderMovieList(e.target.value));
+        saveBtn.addEventListener('click', saveCurrentMovie);
+
+        async function fetchMovies() {
+            try {
+                const res = await fetch('/api/movies');
+                allMovies = await res.json();
+                renderMovieList();
+            } catch (err) {
+                console.error(err);
+                movieListEl.innerHTML = "Error loading movies.";
+            }
+        }
+
+        function renderMovieList(filter = "") {
+            movieListEl.innerHTML = "";
+            const lowerFilter = filter.toLowerCase();
+
+            const filtered = allMovies.filter(m => m.Title.toLowerCase().includes(lowerFilter));
+
+            filtered.forEach(movie => {
+                const div = document.createElement('div');
+                div.className = 'movie-item';
+                if (currentMovie && currentMovie.Title === movie.Title) div.classList.add('active');
+
+                div.innerHTML = `
+                    <div>${movie.Title}</div>
+                    <div class="year">${movie.Year}</div>
+                `;
+                div.addEventListener('click', () => loadMovie(movie));
+                movieListEl.appendChild(div);
+            });
+        }
+
+        function loadMovie(movie) {
+            currentMovie = movie;
+            placeholderMsg.style.display = 'none';
+            editorCard.style.display = 'block';
+            movieTitleEl.innerText = `${movie.Title} (${movie.Year})`;
+
+            // Highlight in sidebar
+            const items = document.querySelectorAll('.movie-item');
+            items.forEach(item => item.classList.remove('active'));
+            // This is a bit inefficient (re-rendering whole list to highlight) but simple
+            renderMovieList(searchBox.value);
+
+            // Parse Description and HiddenIndices
+            const words = movie.Plot.split(' ');
+            const hiddenSet = new Set();
+            if (movie.HiddenIndices) {
+                movie.HiddenIndices.split('|').forEach(idx => {
+                    if (idx !== "") hiddenSet.add(parseInt(idx));
+                });
+            }
+
+            renderWords(words, hiddenSet);
+        }
+
+        function renderWords(words, hiddenSet) {
+            wordContainer.innerHTML = '';
+
+            words.forEach((word, index) => {
+                const span = document.createElement('span');
+                span.className = 'word-token';
+                span.textContent = word;
+                span.dataset.index = index;
+
+                if (hiddenSet.has(index)) {
+                    span.classList.add('redacted');
+                }
+
+                span.addEventListener('click', () => {
+                    span.classList.toggle('redacted');
+                    updateStats();
+                });
+
+                wordContainer.appendChild(span);
+            });
+            updateStats();
+        }
+
+        function updateStats() {
+            const allWords = document.querySelectorAll('.word-token');
+            const hidden = document.querySelectorAll('.word-token.redacted');
+            totalCountEl.innerText = allWords.length;
+            hiddenCountEl.innerText = hidden.length;
+        }
+
+        async function saveCurrentMovie() {
+            if (!currentMovie) return;
+
+            const hiddenIndices = [];
+            document.querySelectorAll('.word-token').forEach(span => {
+                if (span.classList.contains('redacted')) {
+                    hiddenIndices.push(span.dataset.index);
+                }
+            });
+
+            const newIndicesStr = hiddenIndices.join('|');
+
+            // Optimistic UI update
+            currentMovie.HiddenIndices = newIndicesStr;
+
+            try {
+                const res = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: currentMovie.Title,
+                        hiddenIndices: newIndicesStr
+                    })
+                });
+
+                if (res.ok) {
+                    showToast("Saved! Loading next...", "success");
+
+                    // Auto-advance logic
+                    // We need to find the current movie in the currently rendered list (to respect search filters)
+                    // But for simplicity, let's just use the filtered list logic or allMovies if no filter.
+                    // Accessing the rendered list from DOM is safer to respect what the user sees.
+
+                    const movieItems = Array.from(document.querySelectorAll('.movie-item'));
+                    const currentIndex = movieItems.findIndex(item => item.classList.contains('active'));
+
+                    if (currentIndex !== -1 && currentIndex < movieItems.length - 1) {
+                        setTimeout(() => {
+                            // Simulate click on next item to load it and keep UI consistant
+                            movieItems[currentIndex + 1].click();
+                        }, 800); // Small delay to see the toast
+                    }
+
+                } else {
+                    showToast("Error saving!", "error");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Network error!", "error");
+            }
+        }
+
+        function showToast(msg, type) {
+            toast.innerText = msg;
+            toast.className = type === 'error' ? 'error visible' : 'visible';
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 2000);
+        }
+
+    </script>
+</body>
+
+</html>
