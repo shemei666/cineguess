@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineGuess - The Movie Redaction Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="background-ambient"></div>
+
+    <main class="game-container">
+        <header>
+            <div class="score-board">
+                <span class="label">STREAK</span>
+                <span id="streak-counter" class="value">0</span>
+            </div>
+            <h1>CineGuess</h1>
+        </header>
+
+        <div id="game-card" class="glass-panel">
+            <div class="movie-description-container">
+                <p id="movie-description" class="description-text">
+                    Loading...
+                </p>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="guess-input" placeholder="Type movie title..." autocomplete="off">
+                <button id="submit-btn" class="glow-on-hover">GUESS</button>
+            </div>
+
+            <div id="feedback-message" class="feedback hidden"></div>
+        </div>
+
+        <div id="controls">
+            <button id="hint-btn" class="text-btn" title="Hint">💡</button>
+            <button id="skip-btn" class="text-btn" title="Skip Movie">⏩</button>
+        </div>
+    </main>
+
+    <script type="module" src="game.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+</body>
+
+</html>

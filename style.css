@@ -1,0 +1,281 @@
+:root {
+    --bg-dark: #0f0f10;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --accent-gold: #FFD700;
+    --accent-glow: rgba(255, 215, 0, 0.4);
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --redaction-bg: #eaeaea;
+    --redaction-color: #000;
+    --success: #2ecc71;
+    --error: #e74c3c;
+    --transition-speed: 0.3s;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.background-ambient {
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(30, 30, 35, 1) 0%, var(--bg-dark) 60%);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.game-container {
+    width: 90%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+}
+
+header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+h1 {
+    font-weight: 700;
+    font-size: 2.5rem;
+    letter-spacing: 2px;
+    background: linear-gradient(to right, #fff, var(--text-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+}
+
+.score-board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.score-board .label {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.score-board .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.glass-panel {
+    width: 100%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.description-text {
+    font-size: 1.25rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    font-weight: 300;
+}
+
+.redacted {
+    background-color: var(--text-secondary);
+    color: transparent;
+    border-radius: 4px;
+    padding: 0 4px;
+    cursor: default;
+    user-select: none;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+    transition: all 0.5s ease;
+}
+
+.revealed {
+    background-color: transparent;
+    color: var(--accent-gold);
+    font-weight: 500;
+}
+
+.input-area {
+    display: flex;
+    gap: 1rem;
+}
+
+input[type="text"] {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 1rem;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input[type="text"]:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+button {
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    border: none;
+    transition: all var(--transition-speed);
+}
+
+.glow-on-hover {
+    background: var(--accent-gold);
+    color: black;
+    padding: 0 2rem;
+    border-radius: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.glow-on-hover:hover {
+    background: #fff;
+    box-shadow: 0 0 20px var(--accent-glow);
+    transform: translateY(-2px);
+}
+
+.text-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid transparent;
+}
+
+.text-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}
+
+.feedback {
+    text-align: center;
+    font-weight: 500;
+    min-height: 1.5rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.feedback.visible {
+    opacity: 1;
+}
+
+.feedback.error {
+    color: var(--error);
+}
+
+.feedback.success {
+    color: var(--success);
+}
+
+/* Animations */
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.shake-anim {
+    animation: shake 0.5s;
+}
+
+@keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pop-anim {
+    animation: pop 0.3s ease-out;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+    .input-area {
+        flex-direction: column;
+    }
+    
+    .glow-on-hover {
+        padding: 1rem;
+        width: 100%;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .description-text {
+        font-size: 1.1rem;
+    }
+}
+
+/* Controls (Emoji Buttons) */
+#controls {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+#controls .text-btn {
+    font-size: 1.8rem;
+    border: none;
+    padding: 0.5rem;
+    opacity: 0.7;
+    filter: grayscale(1);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#controls .text-btn:hover {
+    opacity: 1;
+    filter: grayscale(0);
+    transform: scale(1.2) rotate(5deg);
+    background: transparent;
+    box-shadow: none;
+}
