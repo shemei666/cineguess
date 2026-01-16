@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!-- Fallback style if not serving static folder correctly or running standalone -->
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             display: flex;
             height: 100vh;
@@ -19,6 +23,8 @@
             font-family: 'Outfit', sans-serif;
             color: #eee;
             margin: 0;
+            align-items: stretch;
+            justify-content: flex-start;
         }
 
         #sidebar {
@@ -75,13 +81,17 @@
 
         #search-box {
             width: 100%;
-            padding: 10px;
+            padding: 6px 10px;
+            /* Reduced vertical padding */
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            border-radius: 5px;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 0.85rem;
+            height: auto;
+            min-height: 0;
+            /* potential override if global styles set it */
             margin-bottom: 10px;
-            box-sizing: border-box;
         }
 
         #editor-area {
@@ -191,7 +201,7 @@
 
     <div id="sidebar">
         <h3>Movies</h3>
-        <input type="text" id="search-box" placeholder="Search...">
+        <input id="search-box" placeholder="Search...">
         <div id="movie-list">Loading...</div>
     </div>
 
@@ -252,16 +262,16 @@
             movieListEl.innerHTML = "";
             const lowerFilter = filter.toLowerCase();
 
-            const filtered = allMovies.filter(m => m.Title.toLowerCase().includes(lowerFilter));
+            const filtered = allMovies.filter(m => (m.title || "").toLowerCase().includes(lowerFilter));
 
             filtered.forEach(movie => {
                 const div = document.createElement('div');
                 div.className = 'movie-item';
-                if (currentMovie && currentMovie.Title === movie.Title) div.classList.add('active');
+                if (currentMovie && currentMovie.title === movie.title) div.classList.add('active');
 
                 div.innerHTML = `
-                    <div>${movie.Title}</div>
-                    <div class="year">${movie.Year}</div>
+                    <div>${movie.title}</div>
+                    <div class="year">${movie.year || ''}</div>
                 `;
                 div.addEventListener('click', () => loadMovie(movie));
                 movieListEl.appendChild(div);
@@ -281,12 +291,17 @@
             renderMovieList(searchBox.value);
 
             // Parse Description and HiddenIndices
-            const words = movie.Plot.split(' ');
+            const words = (movie.Plot || "").split(' ');
             const hiddenSet = new Set();
+
             if (movie.HiddenIndices) {
-                movie.HiddenIndices.split('|').forEach(idx => {
-                    if (idx !== "") hiddenSet.add(parseInt(idx));
-                });
+                if (Array.isArray(movie.HiddenIndices)) {
+                    movie.HiddenIndices.forEach(idx => hiddenSet.add(parseInt(idx)));
+                } else if (typeof movie.HiddenIndices === 'string') {
+                    movie.HiddenIndices.split('|').forEach(idx => {
+                        if (idx !== "") hiddenSet.add(parseInt(idx));
+                    });
+                }
             }
 
             renderWords(words, hiddenSet);
@@ -334,8 +349,11 @@
 
             const newIndicesStr = hiddenIndices.join('|');
 
-            // Optimistic UI update
-            currentMovie.HiddenIndices = newIndicesStr;
+            // Optimistic UI update (store as array for consistency if we want, or keep logic simple)
+            // But since we reload on save usually, it matters less. 
+            // Let's send array to backend to match Firestore types better
+            const indicesArray = hiddenIndices.map(i => parseInt(i));
+            currentMovie.HiddenIndices = indicesArray;
 
             try {
                 const res = await fetch('/api/save', {
@@ -343,7 +361,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: currentMovie.Title,
-                        hiddenIndices: newIndicesStr
+                        hiddenIndices: indicesArray
                     })
                 });
 

@@ -1,32 +1,65 @@
-
-from flask import Flask, render_template, jsonify, request
-import csv
+from flask import Flask, render_template, jsonify, request, send_from_directory
 import os
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 import json
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='client', static_url_path='')
 
-CSV_FILE = 'imdb_movies_1990_plus.csv'
+# Initialize Firebase
+if os.path.exists('serviceAccountKey.json'):
+    cred = credentials.Certificate('serviceAccountKey.json')
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    print("Firebase initialized successfully.")
+else:
+    print("Warning: serviceAccountKey.json not found. Firebase features will fail.")
+    db = None
+
+COLLECTION_NAME = 'movies'
 
 @app.route('/')
-def index():
+def game():
+    return send_from_directory('client', 'index.html')
+
+@app.route('/admin')
+def admin():
     return render_template('admin.html')
 
 @app.route('/api/movies', methods=['GET'])
 def get_movies():
-    movies = []
+    if not db:
+        return jsonify({"error": "Database not configured"}), 500
+    
     try:
-        if os.path.exists(CSV_FILE):
-            with open(CSV_FILE, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                movies = list(reader)
+        movies_ref = db.collection(COLLECTION_NAME)
+        docs = movies_ref.stream()
+        
+        movies = []
+        for doc in docs:
+            movie = doc.to_dict()
+            # Map keys to handle both frontend consistencies (title vs Title) and DB schema (lowercase)
+            movies.append({
+                'id': doc.id,
+                'title': movie.get('title'),           # For renderMovieList (expects lowercase key)
+                'Title': movie.get('title'),           # For loadMovie/save (expects PascalCase key)
+                'year': movie.get('year'),             # For renderMovieList
+                'Year': movie.get('year'),             # For loadMovie
+                'Plot': movie.get('description') or '',  # For loadMovie description (transcoding None to "")
+                'HiddenIndices': movie.get('hiddenIndices', []) # For loadMovie
+            })
+            
+        return jsonify(movies)
     except Exception as e:
-        print(f"Error reading CSV: {e}")
-        return jsonify([])
-    return jsonify(movies)
+        print(f"Error reading from Firestore: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/save', methods=['POST'])
 def save_movie():
+    if not db:
+        return jsonify({"error": "Database not configured"}), 500
+
     try:
         data = request.json
         target_title = data.get('title')
@@ -35,29 +68,20 @@ def save_movie():
         if not target_title:
             return jsonify({"error": "Missing title"}), 400
 
-        movies = []
-        headers = []
-        updated = False
+        # Query to find the document by title
+        movies_ref = db.collection(COLLECTION_NAME)
+        query = movies_ref.where('title', '==', target_title).limit(1)
+        docs = query.stream()
         
-        if os.path.exists(CSV_FILE):
-            with open(CSV_FILE, 'r', encoding='utf-8', newline='') as f:
-                reader = csv.DictReader(f)
-                headers = reader.fieldnames
-                movies = list(reader)
-        else:
-            return jsonify({"error": "CSV file not found"}), 500
-
-        for movie in movies:
-            if movie['Title'] == target_title:
-                movie['HiddenIndices'] = new_indices
-                updated = True
-                break
-        
-        if updated:
-            with open(CSV_FILE, 'w', encoding='utf-8', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=headers)
-                writer.writeheader()
-                writer.writerows(movies)
+        found = False
+        for doc in docs:
+            found = True
+            doc.reference.update({
+                'hiddenIndices': new_indices
+            })
+            break
+            
+        if found:
             return jsonify({"status": "success"})
         else:
             return jsonify({"error": "Movie not found"}), 404

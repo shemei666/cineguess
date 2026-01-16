@@ -1,6 +1,31 @@
-const CSV_FILE_PATH = 'imdb_movies_1990_plus.csv';
 
-// Fallback data in case CSV load fails
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+    apiKey: "AIzaSyC-t05JZI_A35C73OUh4Hj-3DgpLQbE2m8",
+    authDomain: "cineguess-db.firebaseapp.com",
+    projectId: "cineguess-db",
+    storageBucket: "cineguess-db.firebasestorage.app",
+    messagingSenderId: "312520735771",
+    appId: "1:312520735771:web:62ff4b138c5da008dc8cbe",
+    measurementId: "G-QW14ZVKXM0"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+
+const API_URL = '/api/movies';
+
+// Fallback data in case API load fails
 const FALLBACK_MOVIES = [
     {
         title: "The Matrix",
@@ -67,65 +92,31 @@ class CineGuessGame {
 
     async fetchMovies() {
         try {
-            const response = await fetch(CSV_FILE_PATH);
-            if (!response.ok) throw new Error("Failed to load CSV file");
+            const moviesCol = collection(db, 'movies');
+            const snapshot = await getDocs(moviesCol);
 
-            const csvText = await response.text();
-            this.movies = this.parseCSV(csvText);
+            if (snapshot.empty) {
+                throw new Error("No movies found in Firestore");
+            }
 
-            console.log(`Loaded ${this.movies.length} movies from local database.`);
+            this.movies = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    title: data.title,
+                    description: data.description,
+                    hiddenIndices: new Set(data.hiddenIndices || [])
+                };
+            });
 
-            if (this.movies.length === 0) throw new Error("CSV parsed but empty");
+            console.log(`Loaded ${this.movies.length} movies from Firestore.`);
 
         } catch (error) {
-            console.error("Error loading movies:", error);
+            console.error("Error loading movies from Firestore:", error);
             this.movies = [...FALLBACK_MOVIES];
         }
     }
 
-    // Robust CSV Parser considering quoted fields
-    parseCSV(text) {
-        const lines = text.split('\n');
-        const movies = [];
-
-        // Skip header (i=1)
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-
-            const row = [];
-            let inQuote = false;
-            let token = '';
-
-            for (let j = 0; j < line.length; j++) {
-                const char = line[j];
-
-                if (char === '"') {
-                    inQuote = !inQuote;
-                } else if (char === ',' && !inQuote) {
-                    row.push(token);
-                    token = '';
-                } else {
-                    token += char;
-                }
-            }
-            row.push(token); // Push last token
-
-            // Expected Columns: Title, Year, Rating, Plot, HiddenIndices
-            if (row.length >= 5) {
-                const hiddenIndicesRaw = row[4].trim();
-                const hiddenIndices = hiddenIndicesRaw ? hiddenIndicesRaw.split('|').map(Number) : [];
-
-                movies.push({
-                    title: row[0].trim(),
-                    description: row[3].trim(),
-                    hiddenIndices: new Set(hiddenIndices)
-                });
-            }
-        }
-        return movies;
-    }
-
+    // Removed CSV Parser as we now use JSON API
     getRandomMovie() {
         if (this.movies.length === 0) return FALLBACK_MOVIES[0];
         return this.movies[Math.floor(Math.random() * this.movies.length)];
