@@ -67,6 +67,7 @@ h1 {
     font-size: 2.5rem;
     letter-spacing: 2px;
     background: linear-gradient(to right, #fff, var(--text-secondary));
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-transform: uppercase;
@@ -571,11 +572,19 @@ button {
 .btn-icon-small {
     background: transparent;
     border: none;
-    font-size: 1.2rem;
+    font-size: 1.8rem;
     cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-    padding: 5px;
+    opacity: 0.8;
+    transition: all 0.2s;
+    padding: 10px;
+}
+
+#copy-code-btn {
+    font-size: 2rem;
+    padding: 12px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .btn-icon-small:hover {
