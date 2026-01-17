@@ -69,102 +69,259 @@
         </div>
     </main>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, off } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-functions.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC-t05JZI_A35C73OUh4Hj-3DgpLQbE2m8",
+            authDomain: "cineguess-db.firebaseapp.com",
+            projectId: "cineguess-db",
+            storageBucket: "cineguess-db.firebasestorage.app",
+            messagingSenderId: "312520735771",
+            appId: "1:312520735771:web:62ff4b138c5da008dc8cbe",
+            measurementId: "G-QW14ZVKXM0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const functions = getFunctions(app);
+
+        // State
+        let currentRoomCode = null;
+        let currentPlayerId = null;
+        let isHost = false;
+        let roomListener = null;
+
         // DOM Elements
         const lobbyMenu = document.getElementById('lobby-menu');
         const lobbyHostBtn = document.getElementById('lobby-host-btn');
         const lobbyJoinBtn = document.getElementById('lobby-join-btn');
         const backHomeBtn = document.getElementById('back-home-btn');
-
         const roomCodeSection = document.getElementById('room-code-section');
         const joinCodeSection = document.getElementById('join-code-section');
         const playerSection = document.getElementById('player-section');
-
         const startGameBtn = document.getElementById('start-game-btn');
         const joinActionBtn = document.getElementById('join-action-btn');
         const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
-
         const roomCodeValue = document.getElementById('room-code-value');
         const usernameInput = document.getElementById('username-input');
+        const roomCodeInput = document.getElementById('room-code-input');
+        const playerList = document.getElementById('player-list');
+        const statusHeader = document.getElementById('status-header');
+        const copyCodeBtn = document.getElementById('copy-code-btn');
 
-        // Game Configuration from URL
+        // Game Config
         const urlParams = new URLSearchParams(window.location.search);
         const gameConfig = {
             genre: urlParams.get('genre') || 'All',
-            minYear: urlParams.get('minYear') || '1990',
-            maxYear: urlParams.get('maxYear') || '2030',
-            minRating: urlParams.get('minRating') || '0'
+            minYear: parseInt(urlParams.get('minYear')) || 1990,
+            maxYear: parseInt(urlParams.get('maxYear')) || 2030,
+            minRating: parseFloat(urlParams.get('minRating')) || 0
         };
 
-        // Navigation Logic
-        backHomeBtn.addEventListener('click', () => {
-            window.location.href = 'menu.html';
-        });
+        // --- Functions ---
 
-        function showHostView() {
-            lobbyMenu.classList.add('hidden');
-            roomCodeSection.classList.remove('hidden');
-            playerSection.classList.remove('hidden');
-
-            startGameBtn.classList.remove('hidden');
-            leaveLobbyBtn.classList.remove('hidden');
-
-            // MOCK Code Generation
-            roomCodeValue.innerText = "LOAD...";
-            setTimeout(() => { roomCodeValue.innerText = "X9J2"; }, 600);
+        async function createRoom() {
+            setLoading(true);
+            const createRoomFn = httpsCallable(functions, 'createRoom');
+            try {
+                const result = await createRoomFn({
+                    username: usernameInput.value.trim(),
+                    config: gameConfig
+                });
+                
+                currentRoomCode = result.data.roomCode;
+                currentPlayerId = result.data.playerId;
+                isHost = true;
+                
+                setupWaitingRoom();
+            } catch (error) {
+                console.error(error);
+                alert("Failed to create room: " + error.message);
+                setLoading(false);
+            }
         }
 
-        function showJoinView() {
+        async function joinRoom() {
+            if(joinActionBtn.disabled) return;
+            const code = roomCodeInput.value.trim().toUpperCase();
+            if(!code) return;
+
+            setLoading(true);
+            const joinRoomFn = httpsCallable(functions, 'joinRoom');
+            try {
+                const result = await joinRoomFn({
+                    username: usernameInput.value.trim(),
+                    roomCode: code
+                });
+
+                currentRoomCode = code;
+                currentPlayerId = result.data.playerId;
+                isHost = false;
+
+                setupWaitingRoom();
+            } catch (error) {
+                console.error(error);
+                alert("Failed to join room: " + error.message);
+                setLoading(false);
+            }
+        }
+
+        async function startGame() {
+            if(!isHost || !currentRoomCode) return;
+            const startGameFn = httpsCallable(functions, 'startGame');
+            try {
+                await startGameFn({ 
+                    roomCode: currentRoomCode,
+                    playerId: currentPlayerId
+                });
+            } catch (error) {
+                console.error(error);
+                alert("Failed to start game: " + error.message);
+            }
+        }
+
+        function setupWaitingRoom() {
+            // UI Switching
+            lobbyMenu.classList.add('hidden');
+            joinCodeSection.classList.add('hidden');
+            
+            if(isHost) {
+                roomCodeSection.classList.remove('hidden');
+                roomCodeValue.innerText = currentRoomCode;
+                startGameBtn.classList.remove('hidden');
+            } else {
+                roomCodeSection.classList.add('hidden');
+                startGameBtn.classList.add('hidden');
+            }
+
+            playerSection.classList.remove('hidden');
+            leaveLobbyBtn.classList.remove('hidden');
+            statusHeader.innerText = "WAITING FOR PLAYERS...";
+            setLoading(false);
+
+            // RTDB Listener
+            const roomRef = ref(db, `rooms/${currentRoomCode}`);
+            roomListener = onValue(roomRef, (snapshot) => {
+                const data = snapshot.val();
+                if(!data) {
+                    alert("Room was deleted.");
+                    resetLobby();
+                    return;
+                }
+
+                updatePlayerList(data.players);
+
+                if(data.status === 'playing') {
+                    // Navigate to Game
+                    window.location.href = `index.html?room=${currentRoomCode}&player=${currentPlayerId}`;
+                }
+            });
+        }
+
+        function updatePlayerList(players) {
+            playerList.innerHTML = '';
+            const list = Object.values(players || {});
+            list.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'player-item';
+                li.innerHTML = `<span class="player-avatar">${p.isHost ? '👑' : '👤'}</span> <span class="player-name">${p.username}</span>`;
+                playerList.appendChild(li);
+            });
+        }
+
+        function resetLobby() {
+            // Cleanup
+            if(roomListener) {
+                const roomRef = ref(db, `rooms/${currentRoomCode}`);
+                off(roomRef);
+                roomListener = null;
+            }
+            currentRoomCode = null;
+            currentPlayerId = null;
+            isHost = false;
+
+            // UI Reset
+            lobbyMenu.classList.remove('hidden');
+            roomCodeSection.classList.add('hidden');
+            joinCodeSection.classList.add('hidden');
+            playerSection.classList.add('hidden');
+            startGameBtn.classList.add('hidden');
+            joinActionBtn.classList.add('hidden');
+            leaveLobbyBtn.classList.add('hidden');
+            statusHeader.innerText = "";
+            usernameInput.disabled = false;
+        }
+
+        function setLoading(isLoading) {
+            // Simple loading state helpers
+            if(isLoading) {
+                document.body.style.cursor = 'wait';
+                lobbyHostBtn.disabled = true;
+                lobbyJoinBtn.disabled = true;
+                joinActionBtn.disabled = true;
+            } else {
+                document.body.style.cursor = 'default';
+                lobbyHostBtn.disabled = false;
+                lobbyJoinBtn.disabled = false;
+                joinActionBtn.disabled = false;
+            }
+        }
+
+        // --- Event Listeners ---
+
+        lobbyHostBtn.addEventListener('click', () => {
+            if (!usernameInput.value) { usernameInput.focus(); return; }
+            createRoom();
+        });
+
+        lobbyJoinBtn.addEventListener('click', () => {
+            if (!usernameInput.value) { usernameInput.focus(); return; }
             lobbyMenu.classList.add('hidden');
             joinCodeSection.classList.remove('hidden');
             joinActionBtn.classList.remove('hidden');
             leaveLobbyBtn.classList.remove('hidden');
-        }
-
-        function enterWaitingRoom() {
-            joinCodeSection.classList.add('hidden');
-            joinActionBtn.classList.add('hidden');
-
-            playerSection.classList.remove('hidden');
-            // Show status
-            document.getElementById('status-header').innerText = "WAITING...";
-        }
-
-        function resetLobby() {
-            lobbyMenu.classList.remove('hidden');
-
-            roomCodeSection.classList.add('hidden');
-            joinCodeSection.classList.add('hidden');
-            playerSection.classList.add('hidden');
-
-            startGameBtn.classList.add('hidden');
-            joinActionBtn.classList.add('hidden');
-            leaveLobbyBtn.classList.add('hidden');
-
-            document.getElementById('status-header').innerText = "";
-        }
-
-        // Bindings
-        lobbyHostBtn.addEventListener('click', () => {
-            if (!usernameInput.value) {
-                usernameInput.focus();
-                // Simple shake or visual cue could go here
-                return;
-            }
-            showHostView();
         });
 
-        lobbyJoinBtn.addEventListener('click', () => {
-            if (!usernameInput.value) {
-                usernameInput.focus();
-                return;
-            }
-            showJoinView();
-        });
+        joinActionBtn.addEventListener('click', joinRoom);
 
-        joinActionBtn.addEventListener('click', enterWaitingRoom);
+        startGameBtn.addEventListener('click', startGame);
 
         leaveLobbyBtn.addEventListener('click', resetLobby);
+
+        backHomeBtn.addEventListener('click', () => {
+            window.location.href = 'menu.html';
+        });
+
+        copyCodeBtn.addEventListener('click', async () => {
+             const code = roomCodeValue.innerText;
+             try {
+                 if (navigator.clipboard && navigator.clipboard.writeText) {
+                     await navigator.clipboard.writeText(code);
+                     alert("Room code copied!");
+                 } else {
+                     throw new Error('Clipboard API unavailable');
+                 }
+             } catch (err) {
+                 // Fallback
+                 const textArea = document.createElement("textarea");
+                 textArea.value = code;
+                 textArea.style.position = "fixed";
+                 document.body.appendChild(textArea);
+                 textArea.focus();
+                 textArea.select();
+                 try {
+                     document.execCommand('copy');
+                     alert("Room code copied!");
+                 } catch (e) {
+                     alert("Failed to copy code.");
+                 }
+                 document.body.removeChild(textArea);
+             }
+        });
 
     </script>
 </body>
