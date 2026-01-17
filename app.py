@@ -46,6 +46,7 @@ def get_movies():
                 'Title': movie.get('title'),           # For loadMovie/save (expects PascalCase key)
                 'year': movie.get('year'),             # For renderMovieList
                 'Year': movie.get('year'),             # For loadMovie
+                'Genre': movie.get('genre', ['Unknown']), # For loadMovie
                 'Plot': movie.get('description') or '',  # For loadMovie description (transcoding None to "")
                 'HiddenIndices': movie.get('hiddenIndices', []) # For loadMovie
             })
@@ -64,6 +65,9 @@ def save_movie():
         data = request.json
         target_title = data.get('title')
         new_indices = data.get('hiddenIndices')
+        # We might want to allow saving genre too later, but for now just preserving indices as primary goal of this tool.
+        # But let's check if genre is passed to future proof.
+        new_genre = data.get('genre') 
         
         if not target_title:
             return jsonify({"error": "Missing title"}), 400
@@ -76,9 +80,13 @@ def save_movie():
         found = False
         for doc in docs:
             found = True
-            doc.reference.update({
+            update_data = {
                 'hiddenIndices': new_indices
-            })
+            }
+            if new_genre:
+                update_data['genre'] = new_genre
+                
+            doc.reference.update(update_data)
             break
             
         if found:

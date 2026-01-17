@@ -271,7 +271,7 @@
 
                 div.innerHTML = `
                     <div>${movie.title}</div>
-                    <div class="year">${movie.year || ''}</div>
+                    <div class="year">${movie.year || ''} • ${(movie.Genre || []).join(', ')}</div>
                 `;
                 div.addEventListener('click', () => loadMovie(movie));
                 movieListEl.appendChild(div);
@@ -282,7 +282,8 @@
             currentMovie = movie;
             placeholderMsg.style.display = 'none';
             editorCard.style.display = 'block';
-            movieTitleEl.innerText = `${movie.Title} (${movie.Year})`;
+            const genreText = Array.isArray(movie.Genre) ? movie.Genre.join(', ') : (movie.Genre || 'Unknown');
+            movieTitleEl.innerText = `${movie.Title} (${movie.Year}) - ${genreText}`;
 
             // Highlight in sidebar
             const items = document.querySelectorAll('.movie-item');

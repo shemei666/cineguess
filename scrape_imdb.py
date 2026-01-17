@@ -7,13 +7,16 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 from bs4 import BeautifulSoup
+import requests
 
 # CONFIGURATION
 # Search for Feature Films, Released 1990-01-01 to present, sorted by popularity
+# Search for Feature Films, Released 1990-01-01 to present, sorted by popularity
 BASE_URL = "https://www.imdb.com/search/title/?title_type=feature&release_date=1990-01-01,&sort=num_votes,desc"
 CSV_FILENAME = "imdb_movies_1990_plus.csv"
-TARGET_MOVIES = 1000
+TARGET_MOVIES = 1000 # Reduced to 50 to avoid long wait times with detail scraping
 
 # Intelligent Redaction Logic Dependencies
 STOPWORDS = {
@@ -165,6 +168,54 @@ def scrape_imdb_selenium():
                 rating_tag = card.select_one('.ipc-rating-star--base, .ratingGroup--imdb-rating')
                 rating = clean_text(rating_tag.text).split('(')[0].strip() if rating_tag else "N/A"
 
+                # FETCH GENRE FROM DETAIL PAGE
+                genre = "Unknown"
+                try:
+                    # 1. Find the link
+                    link_tag = card.select_one('a.ipc-title-link-wrapper')
+                    if link_tag and 'href' in link_tag.attrs:
+                        detail_url = "https://www.imdb.com" + link_tag['href'].split('?')[0] # Clean URL
+                        print("details:",detail_url)
+                        
+                        # 2. Request the page (with headers to mimic browser)
+                        # We use a session or just requests
+                        print(f"    Fetching details: {title}...")
+                        headers = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                        }
+                        
+                        # Add a small delay to be polite
+                        # time.sleep(random.uniform(0.5, 1.5))
+                        
+                        resp = requests.get(detail_url, headers=headers, timeout=10)
+                        if resp.status_code == 200:
+                            detail_soup = BeautifulSoup(resp.content, 'html.parser')
+                            
+                            # 3. Parse Genre
+                            # Selector: usually in chips .ipc-chip__text or metadata blocks
+                            # This selector targets the genre chips in the header area
+                            genre_tags = detail_soup.select('a.ipc-chip--on-baseAlt .ipc-chip__text, div.ipc-chip-list__scroller a span.ipc-chip__text')
+                            
+                            if genre_tags:
+                                # Collect all genres found
+                                genres_list = [clean_text(tag.text) for tag in genre_tags]
+                                genre = "|".join(genres_list) 
+                            else:
+                                # Fallback, try JSON-LD if available? Or verify selector.
+                                # Let's try another common one for older layouts just in case
+                                genre_alt = detail_soup.select('[data-testid="genres"] a')
+                                if genre_alt:
+                                    genres_list = [clean_text(tag.text) for tag in genre_alt]
+                                    genre = "|".join(genres_list)
+                        else:
+                            print(f"    Failed to fetch details (Status: {resp.status_code})")
+                            
+                except Exception as ex:
+                    print(f"    Error fetching genre: {ex}")
+                    # keep default "Unknown"
+                
+                print(f"    -> Genre: {genre}")
+                
                 # Plot
                 plot_tag = card.select_one('.ipc-html-content-inner-div')
                 plot = clean_text(plot_tag.text) if plot_tag else "N/A"
@@ -176,6 +227,7 @@ def scrape_imdb_selenium():
                     "Title": title,
                     "Year": year,
                     "Rating": rating,
+                    "Genre": genre,
                     "Plot": plot,
                     "HiddenIndices": hidden_indices
                 })
@@ -185,7 +237,7 @@ def scrape_imdb_selenium():
         # Save to CSV
         if collected_movies:
             with open(CSV_FILENAME, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.DictWriter(f, fieldnames=["Title", "Year", "Rating", "Plot", "HiddenIndices"])
+                writer = csv.DictWriter(f, fieldnames=["Title", "Year", "Rating", "Genre", "Plot", "HiddenIndices"])
                 writer.writeheader()
                 writer.writerows(collected_movies)
             print(f"\nDone! Scraped {len(collected_movies)} movies to {CSV_FILENAME}")

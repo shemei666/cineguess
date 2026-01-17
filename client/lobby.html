@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineGuess - Lobby</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="background-ambient"></div>
+
+    <main class="menu-container">
+        <header class="menu-header">
+            <h1 id="status-header"></h1>
+        </header>
+
+        <div id="lobby-panel" class="glass-panel menu-panel">
+
+            <!-- STEP 1: Identification -->
+            <div id="identity-section" class="menu-section">
+                <label class="menu-label">YOUR NAME</label>
+                <input type="text" id="username-input" class="text-input" placeholder="Enter Username">
+            </div>
+
+            <!-- STEP 2: Choose Mode -->
+            <div id="lobby-menu" class="menu-actions">
+                <button id="lobby-host-btn" class="btn-primary full-width">HOST GAME</button>
+                <button id="lobby-join-btn" class="btn-secondary full-width">JOIN GAME</button>
+                <button id="back-home-btn" class="btn-secondary full-width"
+                    style="margin-top: 1rem; border-color: transparent;">BACK TO MENU</button>
+            </div>
+
+            <!-- HOST VIEW -->
+            <div id="room-code-section" class="menu-section hidden">
+                <label class="menu-label">ROOM CODE</label>
+                <div class="room-code-display">
+                    <span id="room-code-value">----</span>
+                    <button id="copy-code-btn" class="btn-icon-small" title="Copy Code">📋</button>
+                </div>
+                <p class="instruction-text">Share this code with friends!</p>
+            </div>
+
+            <!-- JOIN VIEW -->
+            <div id="join-code-section" class="menu-section hidden">
+                <label class="menu-label">ENTER ROOM CODE</label>
+                <input type="text" id="room-code-input" class="text-input" placeholder="e.g. ABCD" maxlength="4">
+            </div>
+
+            <!-- WAITING AREA (Common) -->
+            <div id="player-section" class="menu-section hidden">
+                <label class="menu-label">PLAYERS IN LOBBY</label>
+                <ul id="player-list" class="player-list">
+                    <li class="player-item"><span class="player-avatar">👤</span> <span class="player-name">You</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="menu-actions">
+                <button id="start-game-btn" class="btn-primary full-width hidden">START GAME</button>
+                <button id="join-action-btn" class="btn-primary full-width hidden">JOIN</button>
+                <button id="leave-lobby-btn" class="btn-secondary full-width hidden">LEAVE LOBBY</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // DOM Elements
+        const lobbyMenu = document.getElementById('lobby-menu');
+        const lobbyHostBtn = document.getElementById('lobby-host-btn');
+        const lobbyJoinBtn = document.getElementById('lobby-join-btn');
+        const backHomeBtn = document.getElementById('back-home-btn');
+
+        const roomCodeSection = document.getElementById('room-code-section');
+        const joinCodeSection = document.getElementById('join-code-section');
+        const playerSection = document.getElementById('player-section');
+
+        const startGameBtn = document.getElementById('start-game-btn');
+        const joinActionBtn = document.getElementById('join-action-btn');
+        const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
+
+        const roomCodeValue = document.getElementById('room-code-value');
+        const usernameInput = document.getElementById('username-input');
+
+        // Game Configuration from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameConfig = {
+            genre: urlParams.get('genre') || 'All',
+            minYear: urlParams.get('minYear') || '1990',
+            maxYear: urlParams.get('maxYear') || '2030',
+            minRating: urlParams.get('minRating') || '0'
+        };
+
+        // Navigation Logic
+        backHomeBtn.addEventListener('click', () => {
+            window.location.href = 'menu.html';
+        });
+
+        function showHostView() {
+            lobbyMenu.classList.add('hidden');
+            roomCodeSection.classList.remove('hidden');
+            playerSection.classList.remove('hidden');
+
+            startGameBtn.classList.remove('hidden');
+            leaveLobbyBtn.classList.remove('hidden');
+
+            // MOCK Code Generation
+            roomCodeValue.innerText = "LOAD...";
+            setTimeout(() => { roomCodeValue.innerText = "X9J2"; }, 600);
+        }
+
+        function showJoinView() {
+            lobbyMenu.classList.add('hidden');
+            joinCodeSection.classList.remove('hidden');
+            joinActionBtn.classList.remove('hidden');
+            leaveLobbyBtn.classList.remove('hidden');
+        }
+
+        function enterWaitingRoom() {
+            joinCodeSection.classList.add('hidden');
+            joinActionBtn.classList.add('hidden');
+
+            playerSection.classList.remove('hidden');
+            // Show status
+            document.getElementById('status-header').innerText = "WAITING...";
+        }
+
+        function resetLobby() {
+            lobbyMenu.classList.remove('hidden');
+
+            roomCodeSection.classList.add('hidden');
+            joinCodeSection.classList.add('hidden');
+            playerSection.classList.add('hidden');
+
+            startGameBtn.classList.add('hidden');
+            joinActionBtn.classList.add('hidden');
+            leaveLobbyBtn.classList.add('hidden');
+
+            document.getElementById('status-header').innerText = "";
+        }
+
+        // Bindings
+        lobbyHostBtn.addEventListener('click', () => {
+            if (!usernameInput.value) {
+                usernameInput.focus();
+                // Simple shake or visual cue could go here
+                return;
+            }
+            showHostView();
+        });
+
+        lobbyJoinBtn.addEventListener('click', () => {
+            if (!usernameInput.value) {
+                usernameInput.focus();
+                return;
+            }
+            showJoinView();
+        });
+
+        joinActionBtn.addEventListener('click', enterWaitingRoom);
+
+        leaveLobbyBtn.addEventListener('click', resetLobby);
+
+    </script>
+</body>
+
+</html>
