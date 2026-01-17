@@ -3,9 +3,9 @@
   "short_name": "CineGuess",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#d4af37",
-  "description": "Guess the movie from the redacted description.",
+  "background_color": "#0f0f10",
+  "theme_color": "#FFD700",
+  "description": "CineGuess is an immersive movie guessing game where you decode retracted descriptions. Challenge your film knowledge, build streaks, and guess the title from limited clues!",
   "icons": [
     {
       "src": "icons/icon-48.webp",
@@ -52,17 +52,17 @@
   ],
   "screenshots": [
     {
-      "src": "icons/icon-512.webp",
-      "sizes": "512x512",
-      "type": "image/webp",
-      "form_factor": "wide",
-      "label": "Desktop Home Screen"
+      "src": "assets/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "label": "Mobile Gameplay"
     },
     {
-      "src": "icons/icon-512.webp",
-      "sizes": "512x512",
-      "type": "image/webp",
-      "label": "Mobile Home Screen"
+      "src": "assets/screenshots/desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Gameplay"
     }
   ]
 }

@@ -11,13 +11,16 @@
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
 <body>
     <div class="background-ambient"></div>
 
-    <main class="game-container">
+    <main class="game-container fade-transition" id="main-container">
         <header>
+            <button id="home-btn" class="btn-icon small-icon" title="Back to Menu"
+                style="width: 40px; height: 40px; font-size: 1.2rem;">🏠</button>
             <div class="score-board">
                 <span class="label">STREAK</span>
                 <span id="streak-counter" class="value">0</span>
@@ -25,24 +28,25 @@
             <h1>CineGuess</h1>
         </header>
 
-        <div id="game-card" class="glass-panel">
+        <div id="game-card" class="glass-panel text-content">
             <div class="movie-description-container">
-                <p id="movie-description" class="description-text">
-                    Loading...
+                <p id="movie-description" class="description-text skeleton">
+
                 </p>
             </div>
 
             <div class="input-area">
                 <input type="text" id="guess-input" placeholder="Type movie title..." autocomplete="off">
-                <button id="submit-btn" class="glow-on-hover">GUESS</button>
+                <button id="submit-btn" class="btn-primary">GUESS</button>
             </div>
 
             <div id="feedback-message" class="feedback hidden"></div>
         </div>
 
         <div id="controls">
-            <button id="hint-btn" class="text-btn" title="Hint">💡</button>
-            <button id="skip-btn" class="text-btn" title="Skip Movie">⏩</button>
+            <button id="hint-btn" class="btn-icon" title="Hint">💡</button>
+            <button id="skip-btn" class="btn-icon" title="Skip Movie">⏩</button>
+            <button id="share-btn" class="btn-icon" title="Share Streak">📤</button>
         </div>
     </main>
 
