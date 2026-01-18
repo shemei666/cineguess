@@ -13,6 +13,11 @@
     --transition-speed: 0.3s;
 }
 
+html {
+    height: 100%;
+    overflow: hidden;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -24,12 +29,13 @@ body {
     font-family: 'Outfit', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-primary);
-    min-height: 100vh;
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     /* Allow scrolling when content overflows */
     overflow-y: auto;
+    overflow-x: hidden;
     /* Ensure content has some breathing room */
     padding: 2rem 0;
 }
