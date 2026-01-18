@@ -105,7 +105,7 @@ class CineGuessGame {
         this.skipBtn.addEventListener('click', () => this.skipRound());
         this.hintBtn.addEventListener('click', () => this.useHint());
         this.shareBtn.addEventListener('click', () => this.shareResult());
-        this.homeBtn.addEventListener('click', () => window.location.href = 'menu.html');
+        this.homeBtn.addEventListener('click', () => window.location.href = 'index.html');
         this.inputEl.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleGuess();
         });

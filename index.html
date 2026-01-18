@@ -4,65 +4,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineGuess - The Movie Redaction Game</title>
+    <title>CineGuess - Menu</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="icon.png">
-    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
 <body>
     <div class="background-ambient"></div>
 
-    <main class="game-container fade-transition" id="main-container">
-        <header>
-            <button id="home-btn" class="btn-icon small-icon" title="Back to Menu"
-                style="width: 40px; height: 40px; font-size: 1.2rem;">🏠</button>
-            <div class="score-board">
-                <span class="label">STREAK</span>
-                <span id="streak-counter" class="value">0</span>
-            </div>
+    <main class="menu-container">
+        <header class="menu-header">
             <h1>CineGuess</h1>
+            <p class="subtitle">The Movie Redaction Game</p>
         </header>
 
-        <div id="game-card" class="glass-panel text-content">
-            <div class="movie-description-container">
-                <p id="movie-description" class="description-text skeleton">
-
-                </p>
+        <div class="glass-panel menu-panel">
+            <div class="menu-section">
+                <label for="genre-select" class="menu-label">SELECT GENRE</label>
+                <div class="custom-select-wrapper">
+                    <select id="genre-select" class="custom-select">
+                        <option value="All">All Genres</option>
+                        <option value="Action">Action</option>
+                        <option value="Sci-Fi">Sci-Fi</option>
+                        <option value="Drama">Drama</option>
+                        <option value="Comedy">Comedy</option>
+                        <option value="Horror">Horror</option>
+                        <option value="Thriller">Thriller</option>
+                        <option value="Romance">Romance</option>
+                    </select>
+                </div>
             </div>
 
-            <div class="input-area">
-                <input type="text" id="guess-input" placeholder="Type movie title..." autocomplete="off">
-                <button id="submit-btn" class="btn-primary">GUESS</button>
+            <div class="menu-section">
+                <label class="menu-label">FILTERS</label>
+                <!-- Year Range Row -->
+                <div class="filters-row" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <div class="custom-select-wrapper" style="flex: 1;">
+                        <select id="min-year-select" class="custom-select">
+                            <option value="1990">From: 1990</option>
+                            <option value="2000">From: 2000</option>
+                            <option value="2010">From: 2010</option>
+                            <option value="2020">From: 2020</option>
+                        </select>
+                    </div>
+                    <div class="custom-select-wrapper" style="flex: 1;">
+                        <select id="max-year-select" class="custom-select">
+                            <option value="2030">To: 2030</option>
+                            <option value="2020">To: 2020</option>
+                            <option value="2010">To: 2010</option>
+                            <option value="2000">To: 2000</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Rating Row -->
+                <div class="filters-row">
+                    <div class="custom-select-wrapper" style="width: 100%;">
+                        <select id="rating-select" class="custom-select">
+                            <option value="0">Rating: Any</option>
+                            <option value="6">Rating: 6.0+</option>
+                            <option value="7">Rating: 7.0+</option>
+                            <option value="8">Rating: 8.0+</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
-            <div id="feedback-message" class="feedback hidden"></div>
+            <div class="menu-actions">
+                <button id="play-btn" class="btn-primary full-width">SINGLE PLAYER</button>
+                <button id="multiplayer-btn" class="btn-secondary full-width">MULTIPLAYER</button>
+            </div>
         </div>
 
-        <div id="controls">
-            <button id="hint-btn" class="btn-icon" title="Hint">💡</button>
-            <button id="skip-btn" class="btn-icon" title="Skip Movie">⏩</button>
-            <button id="share-btn" class="btn-icon" title="Share Streak">📤</button>
-        </div>
+        <footer class="menu-footer">
+            <p>Ready to test your movie knowledge?</p>
+        </footer>
     </main>
 
-    <script type="module" src="game.js"></script>
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then((registration) => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch((error) => {
-                        console.log('ServiceWorker registration failed: ', error);
-                    });
+        const minYearSelect = document.getElementById('min-year-select');
+        const maxYearSelect = document.getElementById('max-year-select');
+        const options = [1990, 2000, 2010, 2020, 2030];
+
+        // --- EXISTING LOGIC ---
+
+        function updateMaxOptions() {
+            const currentMin = parseInt(minYearSelect.value);
+            const currentMax = parseInt(maxYearSelect.value);
+
+            // Clear valid options
+            maxYearSelect.innerHTML = '';
+
+            let hasValidOption = false;
+            options.forEach(year => {
+                // Enforce at least a decade gap
+                if (year >= currentMin + 10) {
+                    const opt = document.createElement('option');
+                    opt.value = year;
+                    opt.textContent = `To: ${year}`;
+                    maxYearSelect.appendChild(opt);
+                    hasValidOption = true;
+                }
             });
+
+            // If no valid option (e.g. Start is 2030), maybe just show 2030 or handle edge case?
+            // Given options [1990, 2000, 2010, 2020, 2030], if Start=2020, Max must be 2030.
+            // If Start=2030, no Max possible? logic break. 
+            // Let's assume user won't pick last start year if no range possible, or we handle it.
+            // Better: If no options, add the currentMin + 10 manually or just let it be empty (bad UX).
+            // Actually, let's just make sure "From" options update to exclude the last one? 
+            // For now, I'll just enforce the gap for available "To" options.
+
+            // Reselect previous if valid
+            if (hasValidOption) {
+                if (currentMax >= currentMin + 10 && options.includes(currentMax)) {
+                    maxYearSelect.value = currentMax;
+                } else {
+                    // Default to the last one (widest range) or first one (smallest range)?
+                    // Smallest valid range seems safer/more intuitive to changes
+                    maxYearSelect.options[0].selected = true;
+                }
+            }
         }
+
+        minYearSelect.addEventListener('change', updateMaxOptions);
+
+        // Initial setup to ensure consistency
+        updateMaxOptions();
+
+        document.getElementById('play-btn').addEventListener('click', () => {
+            const genre = document.getElementById('genre-select').value;
+            const minYear = document.getElementById('min-year-select').value;
+            const maxYear = document.getElementById('max-year-select').value;
+            const rating = document.getElementById('rating-select').value;
+
+            window.location.href = `game.html?mode=standard&genre=${genre}&minYear=${minYear}&maxYear=${maxYear}&minRating=${rating}`;
+        });
+
+        document.getElementById('multiplayer-btn').addEventListener('click', () => {
+            const genre = document.getElementById('genre-select').value;
+            const minYear = document.getElementById('min-year-select').value;
+            const maxYear = document.getElementById('max-year-select').value;
+            const rating = document.getElementById('rating-select').value;
+
+            window.location.href = `lobby.html?genre=${genre}&minYear=${minYear}&maxYear=${maxYear}&minRating=${rating}`;
+        });
     </script>
 </body>
 
