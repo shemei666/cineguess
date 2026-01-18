@@ -1,7 +1,7 @@
 const CACHE_NAME = 'cineguess-v1';
 const ASSETS_TO_CACHE = [
     './',
-    './index.html',
+    './game.html',
     './style.css',
     './game.js',
     './icon.png'
